@@ -1,0 +1,107 @@
+---
+title: "Problem Session Analysis"
+author: "Justin Post"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+I've created an R project for the problem sessions. This associates a working directory, R history, R environment, etc. with a folder. We'll learn about these more shortly!
+
+## Read in Data
+
+First we need to find some data to read in. In this case we can use the menus to read in the data we saved locally from <https://archive.ics.uci.edu/dataset/235/individual+household+electric+power+consumption>. Opening the raw data file, we noticed it was a ';' delimited file (covered more shortly!). If we go to File -> Import Dataset we can choose to import a "From Text" data using `base` R or the `readr` method. We chose the `readr` way and checked out the default method. We had to change our delimiter to a ";" and the data read in somewhat reasonably.
+
+The code from the import menu is produced here. 
+
+```{r}
+library(readr)
+household_power_consumption <- read_delim("~/repos/558ProblemSession/household_power_consumption.txt", 
+    delim = ";", 
+    escape_double = FALSE, 
+    trim_ws = TRUE
+    )
+View(household_power_consumption)
+```
+
+Many of the columns read in as character but should be numeric. We figured out a way to determine that via:
+
+```{r}
+head(sort(household_power_consumption$Global_active_power))
+```
+
+This shows that a "?" represents missing data. This argument can be modified in the call to `read_delim()` via the `na = ` argument.
+
+```{r}
+household_power_consumption <- read_delim("~/repos/558ProblemSession/household_power_consumption.txt", 
+    delim = ";", 
+    escape_double = FALSE, 
+    trim_ws = TRUE,
+    na = c("?", "NA", "")
+    )
+View(household_power_consumption)
+```
+
+## Quick summary
+
+We can get a quick summary of the variables using the `summary()` function.
+
+```{r}
+summary(household_power_consumption)
+```
+
+The `Sub_metering_1` variable looks like most of the values are 0. Let's make a new variable that dichotomizes that just to creating a grouping variable we can summarize the data on.
+
+```{r}
+library(dplyr)
+#first note that `group_by` simply adds a grouping attribute to the tibble
+group_by(household_power_consumption, Sub_metering_1)
+
+#create an indicator variable for sub_metering_1 being 0 or greater than 0
+my_household <- household_power_consumption %>% 
+  mutate(sub_metering_indicator = if_else(Sub_metering_1 == 0, 
+                                          0,
+                                          1))
+```
+
+Now we can find summaries of variable for each group by combining `group_by()` and `summarize()` (again covered in more detail soon!).
+
+```{r}
+my_household %>%
+  group_by(sub_metering_indicator) %>%
+  summarize(mean_voltage = mean(Voltage))
+```
+
+There are `NA`s in the data. This is R's missing data value. We probably want to remove those here as it seems like every variable has the same number of missing values (see the output from `summary()`).  One way to do so is to use `is.na()` to check which values of a particular column are missing. The `!` negates that. 
+
+```{r}
+my_household %>%
+  filter(!is.na(sub_metering_indicator)) %>%
+  group_by(sub_metering_indicator) %>%
+  summarize(mean_voltage = mean(Voltage))
+```
+
+Alternatively, `tidyr` has a function to remove any rows that have a missing value (`drop_na()`).
+
+```{r}
+library(tidyr)
+my_household %>%
+  drop_na() %>% #drop any rows with missing values in any variables
+  group_by(sub_metering_indicator) %>%
+  summarize(mean_voltage = mean(Voltage))
+```
+
+We also looked at modifying shortcuts via the Tools menu. For instance, we can make hotkeys for a python code chunk! 
+
+```{python}
+
+```
+
+
+
+
+
