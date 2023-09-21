@@ -1,0 +1,79 @@
+---
+title: "PS5"
+author: "Justin Post"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, cache = TRUE)
+```
+
+## Read in some data
+
+Let's start by reading in some data from a URL. This is a `.csv` file so it is a comma delimited file. Opening it, we saw that there is a header row and some missing values. But it seems like it should read in just fine with `read_csv()`
+```{r}
+library(tidyverse)
+sleep_data <- read_csv("https://www4.stat.ncsu.edu/~online/datasets/sleep_data.csv")
+```
+
+The file at <https://www4.stat.ncsu.edu/~online/datasets/sleep_data_info.txt> gives the reference for where this data comes from. Let's recreate the first plot (almost) that we see in that paper.
+
+```{r}
+#create a plot and define parts of the plot
+ggplot(sleep_data, aes(x = TotalSleepTime, 
+                       y = term_gpa,
+                       color = cohort)) +
+  geom_point(color = "blue", alpha = 0.1, aes(size = midpoint_sleep)) + #add a scatter plot layer
+  geom_smooth(method = "lm", se = FALSE) + #add SLR fits
+  xlab("Total Sleep Time") + #change x label
+  ylab("Spring Term GPA") + #change y label
+  ggtitle("Scatter Plot with SLR Fits") #change title
+```
+
+
+
+```{r}
+#create a plot and define parts of the plot
+ggplot(sleep_data, aes(x = TotalSleepTime, 
+                       y = term_gpa,
+                       color = cohort)) +
+  geom_point(alpha = 0.4, aes(size = midpoint_sleep, shape = cohort)) + #add a scatter plot layer
+  geom_smooth(method = "lm", se = FALSE) + #add SLR fits
+  xlab("Total Sleep Time") + #change x label
+  ylab("Spring Term GPA") + #change y label
+  ggtitle("Scatter Plot with SLR Fits") + #change title
+  scale_size(range = c(0.5, 3), guide = "legend")
+```
+
+## Numeric Summaries
+
+
+```{r}
+colnames(sleep_data)
+sleep_data %>%
+  group_by(cohort) %>%
+  summarize(meanTotSleep = mean(TotalSleepTime),
+            sdTotSleep = sd(TotalSleepTime))
+
+# same kind of summaries for all dbl variables in the data set
+sleep_data <- sleep_data %>%
+  mutate(demo_race_cat = factor(demo_race),
+         demo_gender_cat = factor(demo_gender)) 
+
+sleep_data %>%
+  group_by(cohort) %>%
+  summarize(across(where(is.double) & !c(demo_race, demo_gender, subject_id), 
+                list(mean, sd)))
+
+sleep_data %>%
+  group_by(cohort) %>%
+  summarize(across(where(is.double) & !c(demo_race, demo_gender, subject_id), 
+                list(mean = mean, sd = sd), 
+                .names = "{.col}.{.fn}"))
+```
+
+
+
+
