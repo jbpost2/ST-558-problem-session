@@ -1,0 +1,168 @@
+---
+title: "PS6"
+author: "Justin Post"
+date: "2023-09-28"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Exercises from *Advanced R*
+
+Exercise 3 from section 11.1.2.
+
+Use both a `for` loop and `lapply()` to fit linear modesl to the `mtcars` data frame using the formulas stored in this list:
+
+```{r}
+formulas <- list(
+  mpg ~ disp,
+  mpg ~ I(1/disp),
+  mpg ~ disp + wt,
+  mpg ~ I(1/disp) + wt
+)
+```
+
+First, let's learn a bit about fitting a basic linear model (multiple linear regression) in R. This can be done with the `lm()` function. 
+
+```{r}
+fit <- lm(mpg ~ disp, data = mtcars)
+```
+
+We can obtain a summary of the model fit using `summary()`.
+
+```{r}
+summary(fit)
+```
+
+We can obtain diagnostic plots (for checking assumptions about the model) using the generic `plot()` function. This actually calls `plot.lm()` (see `methods(plot)`, which leads to `getAnywhere("plot.lm")` to get the source code for this method!).
+```{r}
+class(fit)
+str(fit, max.level = 1)
+plot(fit)
+```
+
+If we wanted to get a scatter plot with the fitted line overlayed. We can do that using `Base R` or the `tidyverse`.
+
+```{r}
+plot(x = mtcars$disp, y = mtcars$mpg)
+#sequence for plotting the model fit
+x <- seq(from = 50, to = 500, by = 0.5)
+#predictions come from the generic predict() function (we'll cover all this in topic 3!)
+preds <- predict(fit, newdata = data.frame(disp = x))
+lines(x = x, y = preds)
+
+library(tidyverse)
+ggplot(mtcars, aes(x = disp, y = mpg)) + 
+  geom_point() + 
+  geom_smooth(method = "lm")
+```
+
+Now let's use a `for` loop to fit the model for each formula. Here we could use `seq_along(formulas)` to get an indexing vector. I tend to use the `1:length(formulas)` kind of syntax. (You could also directly iterate over the formulas elements!)
+
+```{r}
+#use a for loop to fit our models
+seq_along(formulas)
+for (i in 1:length(formulas)){
+  lm(formulas[[i]], data = mtcars) %>%
+    summary() %>%
+    print()
+}
+
+#to save the output of the lm() fits, we can initialize a list
+fit_list <- list()
+for (i in 1:length(formulas)){
+  fit_list[[i]] <- lm(formulas[[i]], data = mtcars) 
+}
+```
+
+This is a bit easier using `lapply()`. Note that we pass the name of the function only, `lm`, and not a **call** to the function `lm(x, ...)`. As we have an additional argument to `lm()` other than the formulas, we can pass that as an additional argument to `lapply()`.
+
+```{r}
+#use lapply instead
+fit_objects <- lapply(X = formulas, FUN = lm, data = mtcars)
+fit_objects[[1]]
+str(fit_objects, max.level = 1)
+```
+
+Now let's fit our models but also pull out some useful stats.
+
+```{r}
+#useful stats to get out
+fit
+sum_fit <- summary(fit)
+class(summary(fit))
+str(sum_fit)
+#pull out coefficients
+sum_fit$coefficients
+str(sum_fit$coefficients)
+dimnames(sum_fit$coefficients)[[1]]
+#pull out adjusted r squared
+sum_fit$adj.r.squared
+```
+
+Great, let's write a custom function to do the fit and to pull out those values. We'll return them all in a list.
+
+```{r}
+fit_objects <- lapply(X = formulas, FUN = function(x){
+  fit <- lm(x, data = mtcars)
+  sum_fit <- summary(fit)
+  coefs <- sum_fit$coefficients
+  adj_r_sq <- sum_fit$adj.r.squared
+  list(fit = fit, coefs = coefs, adj_r_sq = adj_r_sq)
+})
+
+str(fit_objects[[1]], max.level = 1)
+```
+
+Alternatively, we can supply a `my_data` argument to our custom function that allows us to pass in a different data frame (as done earlier).
+
+```{r}
+fit_objects <- lapply(X = formulas, 
+                      FUN = function(x, my_data){
+                        fit <- lm(x, data = my_data)
+                        sum_fit <- summary(fit)
+                        coefs <- sum_fit$coefficients
+                        adj_r_sq <- sum_fit$adj.r.squared
+                        list(fit = fit, coefs = coefs, adj_r_sq = adj_r_sq)
+                      }, 
+                      my_data = mtcars)
+```
+
+We could also save our function as an object and call it in a similar manner to how we called `lm()`.
+
+```{r}
+custom_fun <- function(x, my_data){
+                        fit <- lm(x, data = my_data)
+                        sum_fit <- summary(fit)
+                        coefs <- sum_fit$coefficients
+                        adj_r_sq <- sum_fit$adj.r.squared
+                        list(fit = fit, coefs = coefs, adj_r_sq = adj_r_sq)
+                      }
+
+fit_objects <- lapply(X = formulas, 
+                      FUN = custom_fun, 
+                      my_data = mtcars)
+```
+
+
+To give an example where we might iterate over a data frame instead, we'll apply the `lm()` function to each column of the `mtcars` data frame using `mpg` as the response.
+
+```{r}
+#create a matrix of predictors (similar to a data frame)
+predictors <- mtcars[, -1]
+#use apply to apply a custom function to each column of the data frame
+slr_fits <- apply(X = predictors, MARGIN = 2, FUN = function(x1){
+  lm(mtcars$mpg ~ x1)
+})
+```
+
+
+
+
+
+
+
