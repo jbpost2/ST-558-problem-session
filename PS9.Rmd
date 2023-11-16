@@ -1,0 +1,55 @@
+---
+output: html_document
+runtime: shiny
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+## Read in some data
+
+Let's start by reading in some data from a URL. This is a `.csv` file so it is a comma delimited file. Opening it, we saw that there is a header row and some missing values. But it seems like it should read in just fine with `read_csv()`
+
+```{r}
+sleep_data <- read_csv("https://www4.stat.ncsu.edu/~online/datasets/sleep_data.csv")
+```
+
+## App to explore
+
+Modify the plot we made earlier.
+
+```{r, echo=FALSE}
+shinyApp(
+  ui <- fluidPage(
+    sidebarLayout(
+      sidebarPanel(
+        selectizeInput("x_variable", "Select the Explanatory Variable", 
+                      choices = colnames(sleep_data)[c(7:12, 14)],
+                      selected = colnames(sleep_data)[8])
+      ),
+      mainPanel(plotOutput("GPA_plot"))
+    )
+  ),
+  
+  server <- function(input, output, session){
+    
+    output$GPA_plot <- renderPlot({
+        #create a plot and define parts of the plot
+        x_var <- input$x_variable
+        ggplot(sleep_data, aes_string(x = x_var, 
+                               y = "term_gpa",
+                               color = "cohort")) +
+          geom_point(color = "blue", alpha = 0.1, aes(size = midpoint_sleep)) + #add a scatter plot layer
+          geom_smooth(method = "lm", se = FALSE) + #add SLR fits
+          xlab("Total Sleep Time") + #change x label
+          ylab("Spring Term GPA") + #change y label
+          ggtitle("Scatter Plot with SLR Fits") #change title
+    })
+    
+  }
+)
+```
+
+
